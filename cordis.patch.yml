@@ -1,0 +1,4 @@
+# dsh bundle layer: shared agent policy schema and MCP init defaults.
+- insert:
+    - id: dsh-agent-policy
+      name: dsh-agent-policy
