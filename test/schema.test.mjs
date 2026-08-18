@@ -95,6 +95,16 @@ test('MCP is its own face and does not follow write/shell', () => {
   assert.equal(allowTool(mixed, 'mcp__slack__post'), false)
 })
 
+test('delegate_handoff accept is apply_patch; list and reject are free', () => {
+  const developer = applyPreset('developer')
+  const research = applyPreset('research')
+  assert.equal(classifyTool('delegate_handoff', { action: 'accept' }), 'apply_patch')
+  assert.equal(allowTool(developer, 'delegate_handoff', { action: 'accept' }), true)
+  assert.equal(allowTool(research, 'delegate_handoff', { action: 'accept' }), false)
+  assert.equal(allowTool(research, 'delegate_handoff', { action: 'list' }), true)
+  assert.equal(allowTool(research, 'delegate_handoff', { action: 'reject' }), true)
+})
+
 test('unknown tools and explicit empty roles stay closed', () => {
   const dev = applyPreset('developer')
   assert.equal(allowTool(dev, 'send_email'), false)

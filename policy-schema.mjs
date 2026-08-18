@@ -402,6 +402,10 @@ function intersectMcpServers(acc, row, mcp) {
 
 export function classifyTool(name, args) {
   const id = String(name || '').toLowerCase()
+  if (id === 'delegate_handoff') {
+    const action = String(asArgs(args).action || '').toLowerCase()
+    return action === 'accept' ? 'apply_patch' : 'other'
+  }
   if (OPENCLAW_FS[id]) return OPENCLAW_FS[id]
   if (id === 'str_replace_editor') {
     const cmd = commandOf(args)
@@ -422,6 +426,12 @@ export function allowTool(policy, name, args) {
     const server = mcpServerOf(name)
     if (!server) return false
     return mcpServerAllowed(policy, server)
+  }
+  if (id === 'delegate_handoff') {
+    const action = String(asArgs(args).action || '').toLowerCase()
+    if (action === 'accept') return isToolEnabled(policy, 'apply_patch') || isToolEnabled(policy, 'edit')
+    if (action === 'reject' || action === 'list' || action === '') return true
+    return false
   }
   if (id.includes('subagent') || id.includes('delegate')) {
     return (policy.delegation && policy.delegation.maxDepth || 0) > 0
