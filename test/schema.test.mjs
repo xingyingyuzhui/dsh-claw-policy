@@ -95,6 +95,31 @@ test('MCP is its own face and does not follow write/shell', () => {
   assert.equal(allowTool(mixed, 'mcp__slack__post'), false)
 })
 
+test('unknown tools and explicit empty roles stay closed', () => {
+  const dev = applyPreset('developer')
+  assert.equal(allowTool(dev, 'send_email'), false)
+  assert.equal(allowTool(dev, 'browser_publish'), false)
+  assert.equal(allowTool(dev, 'calendar_delete'), false)
+  const empty = normalizePolicy({ preset: 'developer', delegation: { roles: [] } })
+  assert.deepEqual(empty.delegation.roles, [])
+  const kept = normalizePolicy({
+    preset: 'developer',
+    delegation: { maxDepth: 1, maxChildren: 2, maxOutputBytes: 2048 },
+    sandbox: { requireEnforcement: 'full' },
+  })
+  assert.equal(kept.delegation.maxChildren, 2)
+  assert.equal(kept.delegation.maxOutputBytes, 2048)
+  assert.equal(kept.sandbox.requireEnforcement, 'full')
+  const sealed = clampClawPolicy({
+    preset: 'developer',
+    files: { read: 'all', write: 'none' },
+    shell: 'allowlist',
+    tools: { allow: ['read', 'bash'], deny: [] },
+  })
+  assert.equal(sealed.shell, 'deny')
+  assert.equal(isToolEnabled(sealed, 'bash'), false)
+})
+
 test('claw hard cap keeps files all but not unlimited shell', () => {
   const capped = clampClawPolicy(applyPreset('full'))
   assert.equal(capped.files.read, 'all')
