@@ -10,6 +10,7 @@ import {
   clampClawPolicy,
   clampPolicy,
   classifyTool,
+  mcpServerOf,
   intersectPolicies,
   isToolEnabled,
   maxPolicy,
@@ -74,6 +75,24 @@ test('read-only claw agents lose shell, matching OpenClaw deny group:runtime', (
   assert.equal(isToolEnabled(sealed, 'bash'), false)
   const writer = clampClawPolicy(applyPreset('developer'))
   assert.equal(isToolEnabled(writer, 'bash'), true)
+})
+
+test('MCP is its own face and does not follow write/shell', () => {
+  const research = applyPreset('research')
+  assert.equal(classifyTool('mcp__github__search'), 'mcp')
+  assert.equal(mcpServerOf('mcp__github__search'), 'github')
+  assert.equal(allowTool(research, 'mcp__github__search'), true)
+  assert.equal(allowTool({ ...research, mcp: 'none' }, 'mcp__github__search'), false)
+  const explicit = normalizePolicy({
+    preset: 'developer',
+    mcp: 'explicit',
+    servers: { allow: ['github'], deny: [] },
+  })
+  assert.equal(allowTool(explicit, 'mcp__github__search'), true)
+  assert.equal(allowTool(explicit, 'mcp__slack__post'), false)
+  const mixed = intersectPolicies(applyPreset('research'), explicit)
+  assert.equal(allowTool(mixed, 'mcp__github__search'), true)
+  assert.equal(allowTool(mixed, 'mcp__slack__post'), false)
 })
 
 test('claw hard cap keeps files all but not unlimited shell', () => {

@@ -4,6 +4,8 @@
 
 其它插件只消费这份 schema，不要再复制一份方言。卸掉本插件不会放宽权限——闸还在 `dsh-agent-gate`，缺省回落到 DSH 原有 permission-presets。
 
+MCP 工具名是 `mcp__<服务>__<工具>`。`none` 全关；`explicit` 只放行 `servers.allow`；`init-defaults` 在名单为空时放行。真正拒绝和隐藏在闸里。
+
 ## 安装
 
 ```sh
