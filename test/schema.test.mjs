@@ -112,6 +112,20 @@ test('delegate_handoff accept is apply_patch; list and reject are free', () => {
   assert.equal(allowTool(research, 'delegate_handoff', { action: 'reject' }), true)
 })
 
+test('Windows first-party tools map onto existing faces', () => {
+  const official = officialPolicyFromPreset('danger-full-access')
+  const research = applyPreset('research')
+  assert.equal(classifyTool('pwsh'), 'bash')
+  assert.equal(classifyTool('powershell'), 'bash')
+  assert.equal(classifyTool('cmd'), 'bash')
+  assert.equal(classifyTool('web_search'), 'read')
+  assert.equal(classifyTool('web_fetch'), 'read')
+  assert.equal(allowTool(official, 'pwsh'), true)
+  assert.equal(allowTool(official, 'web_search'), true)
+  assert.equal(allowTool(research, 'pwsh'), false)
+  assert.equal(allowTool(research, 'web_search'), true)
+})
+
 test('unknown tools and explicit empty roles stay closed', () => {
   const dev = applyPreset('developer')
   assert.equal(allowTool(dev, 'send_email'), false)
