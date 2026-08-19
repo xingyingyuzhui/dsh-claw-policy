@@ -1,6 +1,6 @@
 {
   "name": "dsh-agent-policy",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Shared Claw/session policy schema, preset bases, MCP init defaults. Does not deny tools. 策略契约：schema / 预设基类 / MCP 初始化默认，不执行拦截。",
   "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "agent", "policy"],
   "license": "MIT",
