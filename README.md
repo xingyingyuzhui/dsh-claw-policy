@@ -24,8 +24,11 @@ dsh plugin --profile web add link:/abs/path/to/dsh-agent-policy
 
 写在 `~/.dsh/agent-policy/defaults.json`：
 
+- `preset`：新建 Claw Agent 的常驻模板（`research` / `developer` / …）。设置里叫 **Claw Agent模板**
 - `mcp`：`none` | `explicit` | `init-defaults`（新 Agent 的 MCP 面默认值）
 - `servers.allow` / `servers.deny`：初始化可见的 MCP 服务名
+
+`BOOTSTRAP.md` 还在时，闸额外放行问名字和写本工作区人设文件；不在这份默认里放宽终端。
 
 ## 卸载
 

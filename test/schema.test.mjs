@@ -20,6 +20,13 @@ import {
   toggleTool,
 } from '../policy-schema.mjs'
 
+test('ask_user is always allowed', () => {
+  const research = applyPreset('research')
+  assert.equal(classifyTool('ask_user_question'), 'ask_user')
+  assert.equal(allowTool(research, 'ask_user_question', {}), true)
+  assert.equal(allowTool(research, 'ask_user', {}), true)
+})
+
 test('schema version and research default', () => {
   assert.equal(POLICY_SCHEMA_VERSION, 1)
   assert.equal(INIT_PRESET, 'research')

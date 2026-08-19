@@ -414,6 +414,7 @@ export function classifyTool(name, args) {
     return 'edit'
   }
   if (isMcpTool(name)) return 'mcp'
+  if (id === 'ask_user_question' || id === 'ask_user' || id === 'user_question') return 'ask_user'
   if (id.includes('subagent') || id.includes('delegate')) return 'other'
   return 'other'
 }
@@ -422,6 +423,7 @@ export function allowTool(policy, name, args) {
   if (!policy) return false
   const id = String(name || '').toLowerCase()
   if (id === 'skill') return true
+  if (id === 'ask_user_question' || id === 'ask_user' || id === 'user_question') return true
   if (isMcpTool(name)) {
     const server = mcpServerOf(name)
     if (!server) return false
@@ -437,6 +439,7 @@ export function allowTool(policy, name, args) {
     return (policy.delegation && policy.delegation.maxDepth || 0) > 0
   }
   const cls = classifyTool(name, args)
+  if (cls === 'ask_user') return true
   if (cls === 'other') return false
   if (cls === 'edit' || cls === 'write' || cls === 'apply_patch') {
     if (cls === 'apply_patch') return isToolEnabled(policy, 'apply_patch') || isToolEnabled(policy, 'edit')

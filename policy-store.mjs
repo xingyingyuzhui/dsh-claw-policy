@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { MCP_IDS, POLICY_SCHEMA_VERSION, mcpServerAllowed } from './policy-schema.mjs'
+import { AGENT_PRESET_IDS, INIT_PRESET, MCP_IDS, POLICY_SCHEMA_VERSION, mcpServerAllowed } from './policy-schema.mjs'
 
 export function defaultDshHome() {
   return process.env.DSH_HOME || join(homedir(), '.dsh')
@@ -15,6 +15,7 @@ export function defaultsFile(home) {
 export function emptyDefaults() {
   return {
     version: POLICY_SCHEMA_VERSION,
+    preset: INIT_PRESET,
     mcp: 'init-defaults',
     servers: { allow: [], deny: [] },
   }
@@ -31,6 +32,7 @@ export function normalizeDefaults(raw) {
   const version = Number(value.version)
   return {
     version: Number.isFinite(version) && version > 0 ? Math.floor(version) : POLICY_SCHEMA_VERSION,
+    preset: AGENT_PRESET_IDS.includes(value.preset) ? value.preset : INIT_PRESET,
     mcp: MCP_IDS.includes(value.mcp) ? value.mcp : 'init-defaults',
     servers: {
       allow: asStringList(servers.allow),
@@ -70,5 +72,5 @@ export function mcpVisible(defaults, serverName) {
 
 export function seedPolicyFromDefaults(defaults, preset) {
   const row = normalizeDefaults(defaults)
-  return { preset, mcp: row.mcp }
+  return { preset: preset || row.preset, mcp: row.mcp, servers: row.servers }
 }
