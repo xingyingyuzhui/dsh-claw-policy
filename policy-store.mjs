@@ -1,7 +1,9 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { httpError } from 'dsh-claw-core/http'
 import {
   AGENT_PRESET_IDS,
   INIT_PRESET,
@@ -34,9 +36,31 @@ export function seedsDir(home) {
   return join(home || defaultDshHome(), 'agent-policy', 'seeds')
 }
 
+const DEFAULTS_KEYS = ['schemaVersion', 'preset', 'mcp', 'servers', 'model', 'skills', 'policy']
+const POLICY_KEYS = ['preset', 'enforced', 'files', 'shell', 'tools', 'delegation', 'sandbox', 'approval', 'mcp', 'servers', 'skills']
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function unknownFields(raw, known) {
+  const out = {}
+  if (!isRecord(raw)) return out
+  for (const key of Object.keys(raw)) {
+    if (known.indexOf(key) < 0) out[key] = raw[key]
+  }
+  return out
+}
+
+/** Records written before `schemaVersion` existed are v1. */
+export function schemaVersionOf(raw) {
+  const version = Number(isRecord(raw) ? raw.schemaVersion : undefined)
+  return Number.isInteger(version) && version > 0 ? version : 1
+}
+
 export function emptyDefaults() {
   return {
-    version: POLICY_SCHEMA_VERSION,
+    schemaVersion: POLICY_SCHEMA_VERSION,
     preset: INIT_PRESET,
     mcp: 'init-defaults',
     servers: { allow: [], deny: [] },
@@ -63,11 +87,11 @@ export function normalizeDefaults(raw) {
   const value = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   const servers = value.servers && typeof value.servers === 'object' ? value.servers : {}
   const skills = value.skills && typeof value.skills === 'object' ? value.skills : {}
-  const version = Number(value.version)
   const preset = AGENT_PRESET_IDS.includes(value.preset) ? value.preset : INIT_PRESET
   const mcp = MCP_IDS.includes(value.mcp) ? value.mcp : 'init-defaults'
   const base = {
-    version: Number.isFinite(version) && version > 0 ? Math.floor(version) : POLICY_SCHEMA_VERSION,
+    ...unknownFields(value, DEFAULTS_KEYS),
+    schemaVersion: schemaVersionOf(value),
     preset,
     mcp,
     servers: {
@@ -87,7 +111,7 @@ export function normalizeDefaults(raw) {
       preset: policy.preset,
       mcp: policy.mcp,
       servers: policy.servers,
-      policy,
+      policy: { ...unknownFields(value.policy, POLICY_KEYS), ...policy },
     }
   }
   return { ...base, policy: clampClawPolicy(normalizePolicy({ preset, mcp, servers: base.servers }, preset)) }
@@ -111,10 +135,49 @@ export async function loadDefaults(file) {
   }
 }
 
+async function atomicWrite(path, text) {
+  await mkdir(dirname(path), { recursive: true })
+  const tmp = path + '.' + process.pid + '.' + randomUUID() + '.tmp'
+  try {
+    await writeFile(tmp, text)
+    await rename(tmp, path)
+  } catch (error) {
+    await unlink(tmp).catch(() => {})
+    throw error
+  }
+}
+
+async function readStoredDefaults(file) {
+  try {
+    const raw = JSON.parse(await readFile(file, 'utf8'))
+    return isRecord(raw) ? raw : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Normal user save: writes the current schemaVersion and keeps unknown
+ * top-level fields from the stored record. Refuses to downgrade a record
+ * written by a newer schema.
+ */
 export async function saveDefaults(file, value) {
-  const next = normalizeDefaults(value)
-  await mkdir(join(file, '..'), { recursive: true })
-  await writeFile(file, JSON.stringify(next, null, 2) + '\n')
+  const stored = await readStoredDefaults(file)
+  const storedVersion = stored ? schemaVersionOf(stored) : POLICY_SCHEMA_VERSION
+  const incomingVersion = isRecord(value) ? schemaVersionOf(value) : POLICY_SCHEMA_VERSION
+  const newest = Math.max(storedVersion, incomingVersion)
+  if (newest > POLICY_SCHEMA_VERSION) {
+    throw httpError(
+      409,
+      'policy defaults schemaVersion ' + newest + ' is newer than supported ' + POLICY_SCHEMA_VERSION,
+      'POLICY_SCHEMA_UNSUPPORTED',
+    )
+  }
+  const next = {
+    ...normalizeDefaults({ ...unknownFields(stored, DEFAULTS_KEYS), ...(isRecord(value) ? value : {}) }),
+    schemaVersion: POLICY_SCHEMA_VERSION,
+  }
+  await atomicWrite(file, JSON.stringify(next, null, 2) + '\n')
   return next
 }
 
@@ -139,8 +202,6 @@ export function readTemplateSeedsSync(home) {
 
 export async function writeTemplateSeed(home, name, content) {
   if (TEMPLATE_SEED_FILES.indexOf(name) < 0) return false
-  const dir = seedsDir(home)
-  await mkdir(dir, { recursive: true })
-  await writeFile(join(dir, name), String(content == null ? '' : content))
+  await atomicWrite(join(seedsDir(home), name), String(content == null ? '' : content))
   return true
 }
